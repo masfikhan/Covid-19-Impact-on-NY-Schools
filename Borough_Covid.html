@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Borough Profiles</title>
+		<script type="text/javascript" src="../d3.js"></script>
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="index.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+        <link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>	
+		</style>
+	</head>
+	<body>
+        <!-- Navigation menu -->
+        <div class="navbar">
+            <a href="index.html">Home</a>
+            <a class="active" href="Borough_Covid.html">Borough COVID-19 Profiles</a>
+            <a href="Broadband_Zipcode.html">Broadband Infrastructure</a>
+            <a href="City_Programs.html">District COVID-19 Programs</a>
+        </div>
+        <h2 class="vis_heading">
+            Borough COVID-19 Profiles
+        </h2>
+        <br>
+        <!-- Borough Buttons -->
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Queens" id="demo" onclick="myFunction()">Queens<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Brooklyn">Brooklyn<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Manhattan">Manhattan<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Bronx">Bronx<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Staten Island">Staten Island<br>
+            </label>
+        </div>
+        <br>
+        <br>
+        <p>
+            <i>Borough COVID-19 Profiles</i> shows health disparities between boroughs, alongside
+            COVID-19 cases and student vaccination rates in schools.
+
+            The "Health Insurance Rates by Borough" choropleth map encodes each borough with a color to represent 
+            the proportion of residents with health insurance.
+            The "Covid Cases Since Sept. '21" bar chart shows the normalized proportions
+            of students and teachers who have contracted COVID-19 in the 2021-2022 academic year.
+            The "Vaccination Status, Updated March '22" donut chart shows the percentage of students
+            who received 0, 1, and 2 doses of the COVID-19 vaccine. These values derive from the 
+            average vaccination rates in the public schools per borough.
+            <br><br>
+			Buttons hovered-over are gray and buttons clicked-on are navy blue. Select a borough to see the visualization.
+        </p>
+
+        <script type="text/javascript">
+            // properly format input from each row so that they are usable
+			let my_rowConverter = function(d) {
+				return {
+					borough:String(d['Borough']),
+                    no_health_insurance:parseFloat(d['No_Health_Insurance']),
+                    student_cases:parseFloat(d['Student_Cases']),
+                    teacher_cases:parseFloat(d['Teacher_Cases']),
+                    staff_cases:parseFloat(d['Staff_Cases']),
+				};
+			}
+
+            let vaccination_Converter = function(d) {
+				return {
+					borough:String(d['School DBN'][2]),
+                    at_least_1_dose:parseFloat(d['% w/ at least one dose']),
+                    two_doses:parseFloat(d['% fully vaccinated'])
+				};
+			}
+
+            let district_Converter = function(d) {
+				return {
+					district:parseFloat(d['Administrative District']),
+                    enrollment:parseFloat(d['Total Enrollment'])
+				};
+			}
+
+            let school_staff_Converter = function(d) {
+				return {
+					borough:String(d['School'][2]),
+                    leadership_count:parseFloat(d['Leadership']),
+                    teacher_count:parseFloat(d['Teachers']),
+                    staff_count:parseFloat(d['Other Staff']),
+				};
+			}
+
+			//Width and height
+			let w = 1200;
+			let h = 480;
+
+			//Create SVG element
+			let svg = d3.select("body")
+				.append("svg")
+				.attr("width", w)
+				.attr("height", h);
+
+			d3.csv("Borough_Covid_School.csv", my_rowConverter).then((data)=> {
+
+                //Load in GeoJSON data
+				d3.json("zip-code.json").then(function(json) {
+
+                    // select borough
+                    d3.selectAll("input[name='borough']").on("change", function(){
+
+                        // remove previous geo path for filtered borough
+                        svg.selectAll("path.a").remove();
+                        svg.selectAll(".a_label").remove();
+
+                        // remove bar chart
+                        svg.selectAll(".borough_cases").remove();
+                        d3.select(".yaxis").remove();
+                        d3.select(".xaxis").remove();
+
+                        // remove pie chart
+                        svg.selectAll(".vaccination").remove();
+                        svg.selectAll(".borough").remove();
+
+                        // borough text
+                        let selected_borough = this.value;
+                        svg.append("text")
+							.text("Borough: " + selected_borough)
+							.style("font-size", "20px")
+							.attr("x", 18)
+							.attr("fill", "white")
+							.attr("font-family", "Lato Light")
+							.attr("class", "borough")
+							.attr("y", 80);
+
+                        let color = d3.scaleQuantize()
+							.range(["#efbbff","#d896ff","#be29ec","#800080","#660066"]);
+
+                        // health insurance scale
+                        //color 1
+                        svg.append("rect")
+                            .attr("x", 20)
+                            .attr("y", 230)
+                            .attr("height", 12)
+                            .attr("width", 30)
+                            .attr("fill", "#efbbff")
+                        
+                        //color 2
+                        svg.append("rect")
+                            .attr("x", 50)
+                            .attr("y", 230)
+                            .attr("height", 12)
+                            .attr("width", 30)
+                            .attr("fill", "#d896ff")
+
+                        //color 3
+                        svg.append("rect")
+                            .attr("x", 80)
+                            .attr("y", 230)
+                            .attr("height", 12)
+                            .attr("width", 30)
+                            .attr("fill", "#be29ec")
+                        
+                        //color 4
+                        svg.append("rect")
+                            .attr("x", 110)
+                            .attr("y", 230)
+                            .attr("height", 12)
+                            .attr("width", 30)
+                            .attr("fill", "#800080")
+                        
+                        //color 5
+                        svg.append("rect")
+                            .attr("x", 140)
+                            .attr("y", 230)
+                            .attr("height", 12)
+                            .attr("width", 30)
+                            .attr("fill", "#660066")
+                        
+                        // map labels
+                        svg.append("text")
+                            .text("Health Insurance Rates by Borough")
+                            .attr("font-family", "Lato Light")
+                            .style("font-size", "28px")
+                            .style("fill", "white")
+                            .attr("x", 15)
+                            .attr("y", 50);
+
+                        svg.append("text")
+                            .text("LOW")
+                            .attr("font-family", "Lato")
+                            .style("font-size", "12px")
+                            .style("fill", "white")
+                            .attr("x", 20)
+                            .attr("y", 230);
+
+                        svg.append("text")
+                            .text("HIGH")
+                            .attr("font-family", "Lato")
+                            .style("fill", "white")
+                            .style("font-size", "12px")
+                            .attr("x", 140)
+                            .attr("y", 230);
+
+                        svg.append("text")
+                            .text("Health Insurance Index")
+                            .attr("font-family", "Lato")
+                            .style("fill", "white")
+                            .style("font-size", "10px")
+                            .attr("x", 50)
+                            .attr("y", 252);
+
+                        let no_health_min = d3.min(data, (d)=> { return d.no_health_insurance; });
+                        let no_health_max = d3.max(data, (d)=> { return d.no_health_insurance; })
+
+                        // scale from lowest health insurance to highest health insurance rates
+                        // input domains for color scales
+                        color.domain([1 - no_health_max, 1 - no_health_min]);
+
+                        // Choropleth map for selected borough
+
+                        // SVG for filtered borough
+                        let svg2 = svg.append("svg")
+                            //600, 600
+                            .attr("width", 600)
+                            .attr("heigh", 600);
+
+                        // filtered json array for selected borough
+						var filtered = [];
+
+                        for (let j = 0; j < json.features.length; j++) {
+                            let jsonBorough = json.features[j].properties.borough;
+                            // only get json objects for selected borough
+                            if (jsonBorough == selected_borough) {
+                                filtered.push(json.features[j])
+                            }
+                        }
+
+                        //Merge the csv data and GeoJSON
+                        //Loop through once for each csv data value
+                        for (let i = 0; i < data.length; i++) {
+                            let dataBorough = data[i].borough;				
+                            let dataHealthInsurance = (1 - data[i].no_health_insurance);
+                            
+                            //Find the corresponding zip code inside the GeoJSON
+                            // map zip codes to selected borough
+                            for (let j = 0; j < json.features.length; j++) {
+                            
+                                let jsonBorough = json.features[j].properties.borough;
+
+                                if (dataBorough == jsonBorough) {
+
+                                    //Copy the appropriate data value into the JSON
+                                    json.features[j].properties.value = dataHealthInsurance;
+                                    json.features[j].properties.inverse_value = data[i].no_health_insurance;
+                                }
+                            }		
+                        }
+
+                        //Define path generators per borough (changes in scale and translate coords)
+                        queens_projection = d3.geoAlbers()
+								.center([0, 40])
+								.rotate([74,0])
+								.translate([200, 1150])
+								.scale(75000)
+
+                        let queens_path = d3.geoPath()
+                            .projection(queens_projection);
+
+                        let brooklyn_projection = d3.geoAlbers()
+                            .center([0, 40])
+                            .rotate([74,0])
+                            .translate([300, 1150])
+                            .scale(80000)
+
+                        let brooklyn_path = d3.geoPath()
+                            .projection(brooklyn_projection);
+
+                        let bronx_projection = d3.geoAlbers()
+                            .center([0, 40])
+                            .rotate([74,0])
+                            .translate([200, 1600])
+                            .scale(90000)
+
+                        let bronx_path = d3.geoPath()
+                            .projection(bronx_projection);
+
+                        let manhattan_projection = d3.geoAlbers()
+                            .center([0, 40])
+                            .rotate([74,0])
+                            .translate([300, 1480])
+                            .scale(90000)
+
+                        let manhattan_path = d3.geoPath()
+                            .projection(manhattan_projection);
+
+                        let staten_island_projection = d3.geoAlbers()
+                            .center([0, 40])
+                            .rotate([74,0])
+                            .translate([550, 1080])
+                            .scale(85000)
+
+                        let staten_path = d3.geoPath()
+                            .projection(staten_island_projection);
+
+                        // choropleth map function
+                        let borough_map = function(path) {
+                            borough = svg2.selectAll("path.a")
+                                .data(filtered)
+                                .enter()
+                                .append("path")
+                                .attr("d", path)
+                                .style("fill", (d)=> {
+                                    //Get data value
+                                    let value = d.properties.value;
+                                    return color(value);
+                                })
+                                .attr("class", "a")
+
+                            svg2.selectAll("labels")
+                                .data(filtered)
+                                .enter()
+                                .append("text")
+                                .attr("x", 500)
+                                .attr("y", 80)
+                                .style("text-anchor", "middle")
+                                .style("fill", "white")
+                                .style("font-size", "14px")
+                                .style("font-family", "Lato")
+                                .text(function(d, i){
+                                    if (i == 0)
+                                    {
+                                        return("No Health Insurance: " + Math.round(d.properties.inverse_value * 100) + "%");
+                                    }
+                                })
+                                .attr("class", "a_label")
+                        }
+
+                        // county cases function
+                        let borough_cases_2 = function(borough_char, district_low, district_high){
+                            
+                            var student_total = 0;
+                            let teacher_total = 0;
+                            
+                            // use borough char to identify borough
+                            d3.csv("School_Staff_Demographics.csv", school_staff_Converter).then((school_staff_data)=> {
+                                for (let i = 0; i < school_staff_data.length; i++)
+                                {
+                                    if (school_staff_data[i].borough == borough_char)
+                                    {
+                                        teacher_total = teacher_total + school_staff_data[i].teacher_count;
+                                    }
+                                }
+
+                                d3.csv("2020-2021_Demographic_Snapshot_District.csv", district_Converter).then((student_data)=> {
+                                    for (let i = 0; i < student_data.length; i++)
+                                    {
+                                        // check district range
+                                        if ((student_data[i].district >= district_low)
+                                            && (student_data[i].district <= district_high))
+                                        {
+                                            student_total = student_total + student_data[i].enrollment;
+                                        }
+
+                                        // check district 32 in brooklyn
+                                        if ((borough_char == "K") && (student_data[i].district == 32))
+                                        {
+                                            student_total = student_total + student_data[i].enrollment;
+                                        }
+                                    }
+                            
+                                    cases = [];
+                                    for (let j = 0; j < data.length; j++)
+                                    {
+                                        if (data[j].borough == selected_borough) {
+
+                                            cases.push((data[j].student_cases/student_total) * 100);
+                                            cases.push((data[j].teacher_cases/teacher_total) * 100);
+                                        }
+                                    }
+
+                                    let yAxisSpace = 50; // space on the left for labeling y Axis
+                                    let xAxisSpace = 100; // space on the bottom for labeling x Axis
+
+                                    let xScale = d3.scaleBand()
+                                        .domain(["Students", "Teachers"])
+                                        .range([0, 200]);
+
+                                    // set up scale for y axis
+                                    let yScale = d3.scaleLinear()
+                                        .domain([0, 25])
+                                        .range([300, 100]);
+
+                                    // set up functions to draw axes
+                                    let yAxis = d3.axisLeft().scale(yScale);
+                                    let xAxis = d3.axisBottom().scale(xScale);
+
+                                    // draw axes (axes coordinates)
+                                    svg.append("g")
+                                        .attr("class", "yaxis")
+                                        .attr("transform", "translate(" + ((550) + "," + (yAxisSpace)) + ")")
+                                        .call(yAxis);
+
+                                    svg.append("g")
+                                        .attr("class", "xaxis")
+                                        .attr("transform", "translate(550, " + (350) + ")")
+                                        .call(xAxis);
+
+                                    bar_colors = ["#004c6d", "#0079b3"];
+
+                                    // bar chart rectangles
+                                    svg.selectAll("rect.cases")
+                                        .data(cases)
+                                        .enter()
+                                        .append("rect")
+                                        .attr("x", function(d, i) {
+                                            return (i * 120) + 550;
+                                        })
+                                        .attr("y", (d) => {
+                                            return (yScale(d)) + yAxisSpace;
+                                        })
+                                        .attr("width", xScale.bandwidth()/1.5)
+                                        .attr("height", function(d) {
+                                            return 300 - yScale(d);
+                                        })
+                                        .attr("fill",function(d, i) {
+                                            return bar_colors[i];
+                                        })
+                                        .attr("class", "borough_cases")
+                                        // hover values
+                                        .on("mouseout", function(event, d){
+                                            d3.select("#cases_value").attr("opacity", 0);
+                                        })
+                                        .on("mouseover", function(event, d){
+
+                                            let x = parseInt(d3.select(this).attr("x")) + 30;
+                                            let y = parseInt(d3.select(this).attr("y")) - 10;
+                                            d3.select("#cases_value").remove();
+                                            
+                                            svg.append("text")
+                                                .attr("x", x)
+                                                .attr("y", y)
+                                                .style("text-anchor", "middle")
+                                                .style("fill", "white")
+                                                .style("font-size", "13px")
+                                                .text(Math.round(d) + "%")
+                                                .attr("id", "cases_value");
+                                        });
+
+                                    svg.append("text")
+                                        .attr("x", 660)
+                                        .attr("y", 130)
+                                        .style("text-anchor", "middle")
+                                        .style("fill", "white")
+                                        .style("font-size", "15")
+                                        .attr("class", "borough_cases")
+                                        .attr("font-family", "Lato")
+                                        .text("Covid Cases Since Sept. '21");
+                            
+                                });
+
+                            });
+                        }
+                                    
+                        // vaccination chart function
+                        let borough_vacc_chart = function(borough_char){
+
+                            d3.csv("Student_COVID_Vaccinations__3-24-2022_.csv", vaccination_Converter).then((vaccination_rates)=> {
+                                // add each school's rates to 3 arrays, then find avg
+                                no_doses_array = [];
+                                only_1_dose_array = [];
+                                full_doses_array = [];
+
+                                for (let j = 0; j < vaccination_rates.length; j++)
+                                {
+                                    if (vaccination_rates[j].borough == borough_char)
+                                    {
+                                        // find 0, 1, 2 doses rates
+                                        let only_1_dose = vaccination_rates[j].at_least_1_dose - vaccination_rates[j].two_doses;
+                                        let no_doses = 1 - (only_1_dose + vaccination_rates[j].two_doses);
+
+                                        no_doses_array.push(no_doses);
+                                        only_1_dose_array.push(only_1_dose);
+                                        full_doses_array.push(vaccination_rates[j].two_doses);
+                                    }
+                                }
+
+                                // vaccination rates donut chart
+                                let outerRadius = 100;
+                                let innerRadius = 50;
+                                let arc = d3.arc()
+                                    .innerRadius(innerRadius)
+                                    .outerRadius(outerRadius);
+                                
+                                let pie_colors = d3.scaleOrdinal(["#fff2cc", "#ffd966", "#e69138"]);
+
+                                // average of dose rates per borough
+                                no_doses_avg = d3.sum(no_doses_array)/(no_doses_array.length);
+                                one_dose_avg = d3.sum(only_1_dose_array)/(only_1_dose_array.length);
+                                two_doses_avg = d3.sum(full_doses_array)/(full_doses_array.length);
+
+                                var vaccination_makeup = {
+                                    "No Doses":no_doses_avg,
+                                    "One Dose":one_dose_avg,
+                                    "Two Doses":two_doses_avg
+                                }
+
+                                var pie = d3.pie()
+                                    .value(function(d) {
+                                        return d.value; 
+                                    })
+
+                                var pie_data = Object.keys(vaccination_makeup)
+                                    .map(function(d) { 
+                                        return {key: d, value: vaccination_makeup[d]};
+                                    });
+
+                                let arcs = svg.selectAll("g.arc")
+                                    .data(pie(pie_data))
+                                    .enter()
+                                    .append("g")
+                                    .attr("class", "vaccination")
+                                    .attr("transform", "translate(" + (outerRadius + 920) + "," + (250) + ")")
+                                    .on("mouseout", function(event, d, i){
+                                            d3.select("#vaccination_value").attr("opacity", 0);
+                                            d3.select("#vaccination").attr("opacity", 0);
+                                    })
+                                    .on("mouseover", function(event, d, i){
+                                        d3.select("#vaccination_value").remove();
+                                        d3.select("#vaccination").remove();
+
+                                        svg.append("text")
+                                            .attr("x", 850)
+                                            .attr("y", 220)
+                                            .style("text-anchor", "middle")
+                                            .style("fill", "white")
+                                            .style("font-size", "14px")
+                                            .text(d.data.key + ": " + Math.round(d.value * 100) + "%")
+                                            .attr("id", "vaccination");
+                                    });
+
+                                //Draw arc paths
+                                arcs.append("path")
+                                    .attr("fill", (d, i)=> {
+                                        return pie_colors(i);
+                                    })
+                                    .attr("d", arc);
+
+                                // donut chart labels
+                                svg.append("circle")
+                                    .attr("cx", 840)
+                                    .attr("cy", 250)
+                                    .attr("r", 5)
+                                    .attr("fill", "#fff2cc")
+                                    .attr("class", "vaccination");
+
+                                svg.append("text")
+                                    .attr("x", 875)
+                                    .attr("y", 255)
+                                    .style("text-anchor", "middle")
+                                    .style("fill", "white")
+                                    .style("font-size", "12")
+                                    .attr("class", "vaccination")
+                                    .text("No Doses");
+
+                                svg.append("circle")
+                                    .attr("cx", 840)
+                                    .attr("cy", 270)
+                                    .attr("r", 5)
+                                    .attr("fill", "#ffd966")
+                                    .attr("class", "vaccination");
+
+                                svg.append("text")
+                                    .attr("x", 868)
+                                    .attr("y", 275)
+                                    .style("text-anchor", "middle")
+                                    .style("fill", "white")
+                                    .style("font-size", "12")
+                                    .attr("class", "vaccination")
+                                    .text("1 Dose");
+
+                                svg.append("circle")
+                                    .attr("cx", 840)
+                                    .attr("cy", 290)
+                                    .attr("r", 5)
+                                    .attr("fill", "#e69138")
+                                    .attr("class", "vaccination");
+
+                                svg.append("text")
+                                    .attr("x", 872)
+                                    .attr("y", 295)
+                                    .style("text-anchor", "middle")
+                                    .style("fill", "white")
+                                    .style("font-size", "12")
+                                    .attr("class", "vaccination")
+                                    .text("2 Doses");
+
+                                svg.append("text")
+                                    .attr("x", 1000)
+                                    .attr("y", 130)
+                                    .style("text-anchor", "middle")
+                                    .style("fill", "white")
+                                    .style("font-size", "15")
+                                    .attr("class", "race")
+                                    .attr("font-family", "Lato")
+                                    .text("Vaccination Status, Updated March '22");
+                            });
+                        }
+
+                        // Bind data and create one path per GeoJSON feature
+                        // Different paths per borough, use filtered json array for data
+                        if (selected_borough == "Queens")
+                        {
+                            borough_map(queens_path);
+                            borough_cases_2("Q", 24, 30);
+                            borough_vacc_chart("Q");
+                        }
+
+                        else if (selected_borough == "Brooklyn")
+                        {
+                            borough_map(brooklyn_path);
+                            borough_cases_2("K", 14, 23);
+                            borough_vacc_chart("K");
+                        }
+
+                        else if (selected_borough == "Bronx")
+                        {
+                            borough_map(bronx_path);
+                            borough_cases_2("X", 7, 13);
+                            borough_vacc_chart("X");
+                        }
+
+                        else if (selected_borough == "Manhattan")
+                        {
+                            borough_map(manhattan_path);
+                            borough_cases_2("M", 1, 6);
+                            borough_vacc_chart("M");
+                        }
+
+                        else if (selected_borough == "Staten Island")
+                        {
+                            borough_map(staten_path);
+                            borough_cases_2("R", 31, 31);
+                            borough_vacc_chart("R");
+                        }
+
+                        // Choropleth map for all boroughs
+                        // SVG for minimized city overview
+                        let svg3 = svg.append("svg")
+                            .attr("stroke", "gray")
+                            .attr("stroke-width", "0px")
+                            .attr("width", 250)
+                            .attr("heigh", 250);
+
+                        // Define map projection
+                        let projection = d3.geoAlbers()
+                            .center([0, 40])
+                            .rotate([74,0])
+                            .translate([100, 660])
+                            .scale(25000);
+
+                        // Define path generator for all boroughs
+                        let path = d3.geoPath()
+                            .projection(projection);
+
+                        // Bind data and create one path per GeoJSON feature
+                        svg3.selectAll("path")
+                        .data(json.features)
+                        .enter()
+                        .append("path")
+                        .attr("d", path)
+                        .style("fill", (d)=> {
+                            //Get data value
+                            let value = d.properties.value;
+                            return color(value);
+                        })
+
+                        svg3.append('rect')
+                            .attr('x', 10)
+                            .attr('y', 210)
+                            .attr('width', 200)
+                            .attr('height', 240)
+                            .attr("fill", "none")
+                            .attr("stroke", "white")
+                            .attr("stroke-width", "1px");
+                    });
+                });
+            });
+		</script>
+	</body>
+</html>

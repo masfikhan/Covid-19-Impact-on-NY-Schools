@@ -1,0 +1,98 @@
+body {
+  margin: 0%;
+  background-color:#293241;
+  color: ivory;
+}
+
+/* text styling */
+p {
+  font-family: 'Lato', sans-serif;
+  letter-spacing: 1px;
+  font-size: 16px;
+  color: ivory;
+}
+
+/* Title page styling */
+.title {
+  font-family: 'Lato Light', sans-serif;
+  letter-spacing: 0.65px;
+  font-size: 40px;
+  color: ivory;
+  text-align: center;
+}
+
+.byline {
+  font-family: 'Lato Light', sans-serif;
+  letter-spacing: 0.65px;
+  font-size: 30px;
+  color: ivory;
+  text-align: center;
+}
+
+/* Headings styling */
+.sub_heading {
+  font-size: 28px;
+  width: 100%; 
+  text-align: left; 
+  font-family: 'Lato Light', serif;
+  letter-spacing: 0.8px;
+  background-color: #4297A0;
+  color: ivory;
+  padding: 10px;
+}
+
+.vis_heading {
+  font-size: 30px;
+  width: 100%; 
+  text-align: left; 
+  font-family: 'Lato Light', serif;
+  letter-spacing: 0.1px;
+  background-color: #4297A0;
+  color: ivory;
+  padding: 10px;
+}
+
+/* Radio button styling */
+.btn {
+  color: white;
+  background-color: #0d566d;
+  font-family: 'Lato', sans-serif;
+  letter-spacing: 0.8px;
+  font-size: 15px;
+}
+
+.btn:hover, .btn:focus,
+.btn-secondary:active:hover, .btn-secondary:active:focus {
+  background-color: #a19f9f;
+}
+
+.btn-secondary:not(:disabled):not(.disabled):active{
+  background-color:rgb(46, 46, 95);
+}
+
+/* Navigation menu styling */
+.navbar {
+  width: 100%;
+  background-color: #0d566d;
+  overflow: auto;
+}
+  
+.navbar a {
+  float: left;
+  padding: 10px;
+  color: ivory;
+  text-decoration: none;
+  font-size: 18px;
+  width: 22%; 
+  text-align: center; 
+  font-family: 'Lato', sans-serif;
+  letter-spacing: 0.8px;
+}
+
+.navbar a:hover {
+  background-color: #a19f9f;
+}
+
+.navbar a.active {
+  background-color: #4297A0;
+}

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>BroadBand Infrastructure by Zip Code</title>
+		<script type="text/javascript" src="../d3.js"></script>
+
+		<link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="index.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+        <link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>	
+		</style>
+	</head>
+	<body>
+		<!-- Navigation menu -->
+		<div class="navbar">
+            <a href="index.html">Home</a>
+            <a href="Borough_Covid.html">Borough COVID-19 Profiles</a>
+            <a class="active" href="Broadband_Zipcode.html">Broadband Infrastructure</a>
+            <a href="City_Programs.html">District COVID-19 Programs</a>
+        </div>
+        <h2 class="vis_heading">
+            Broadband Infrastructure
+        </h2>
+		<br>
+        <!-- Borough Buttons -->
+		<div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Queens">Queens<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Brooklyn">Brooklyn<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Manhattan">Manhattan<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Bronx">Bronx<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="borough" value="Staten Island">Staten Island<br>
+            </label>
+        </div>
+        <br><br>
+		<!-- Broadband Access Buttons -->
+		<div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-secondary">
+                <input type="radio" name="access_type" value="Home">Home Broadband<br>
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="access_type" value="Mobile">Mobile Broadband<br>
+            </label>
+			<label class="btn btn-secondary">
+                <input type="radio" name="access_type" value="Public Computers">Public Computers<br>
+            </label>
+        </div>
+		<br><br>
+        <p>
+			Since COVID-19 prompted the need for remote learning and digital resources,
+			<i>Broadband Infrastructure</i> shows broadband access disparities by zip code.
+            The "Broadband Rates by Zip Code" choropleth maps encode each zip code with a color 
+			representing the access level of the selected type of broadband infrastructure, including home broadband, mobile broadband,
+			and public computers. The choropleth map for public computers also contains hotspot centroids 
+			per zip code in which the radius is proportional to the number of Wi-Fi hotspots installed
+			by the city government. You can hover on each zip code to see the broadband rate.
+			<br><br>
+			Buttons hovered-over are gray and buttons clicked-on are navy blue. Select a borough, then a broadband 
+			type to see the visualization.
+        </p>
+		<br>
+
+		<script type="text/javascript">
+            // properly format input from each row so that they are usable
+			let my_rowConverter = function(d) {
+				return {
+					zip_code:parseFloat(d['Zip_Code']),
+                    home_broadband:parseFloat(d['Home_Broadband_Adoption']),
+                    mobile_broadband:parseFloat(d['Mobile_Broadband_Adoption']),
+                    pcc_count:parseFloat(d['Public_Computer_Center_Count']),
+				};
+			}
+
+			let hotspot_Converter = function(d) {
+				return {
+					location:String(d['Location']),
+					lat:parseFloat(d['Latitude']),
+					lon:parseFloat(d['Longitude']),
+					borough:String(d['Borough Name']),
+					post_code:parseFloat(d['Postcode'])
+				};
+			}
+
+			//Width and height
+			let w = 600;
+			let h = 480;
+
+			//Create SVG element
+			let svg = d3.select("body")
+				.append("svg")
+				.attr("width", w)
+				.attr("height", h);
+
+
+			d3.csv("Broadband_Adoption_and_Infrastructure_by_Zip_Code.csv", my_rowConverter).then((data)=> {
+
+				d3.csv("Hotspot_Locations.csv", hotspot_Converter).then((hotspot_sites)=> {
+					// add count of hotspot locations to each zip code
+					for (let i = 0; i < data.length; i++)
+					{
+						data[i].hotspots_count = 0;
+						for (let j = 0; j < hotspot_sites.length; j++)
+						{
+							if (data[i].zip_code == hotspot_sites[j].post_code)
+							{
+								data[i].hotspots_count += 1;
+							}
+						}
+					}
+				});
+
+				//Load in GeoJSON data
+				d3.json("zip-code.json").then(function(json) {
+
+					// select borough
+					d3.selectAll("input[name='borough']").on("change", function(){
+
+						// remove text from previous selection
+						svg.selectAll(".borough").remove();
+						svg.selectAll(".reminder").remove();
+						svg.selectAll(".access").remove();
+
+						// remove previous geo path for filtered borough
+						svg.selectAll("path.a").remove();
+						svg.selectAll(".hotspot_radii").remove();
+
+						let selected_borough = this.value;
+
+						// map text
+						svg.append("text")
+                            .text("Broadband Rates by Zip Code")
+                            .attr("font-family", "Lato Light")
+                            .style("font-size", "28px")
+                            .style("fill", "white")
+                            .attr("x", 20)
+                            .attr("y", 20);
+
+						svg.append("text")
+							.text("Borough: " + selected_borough)
+							.style("font-size", "18px")
+							.attr("x", 20)
+							.attr("fill", "white")
+							.attr("font-family", "Lato Light")
+							.attr("class", "borough")
+							.attr("y", 55);
+
+						svg.append("text")
+							.text("Choose a broadband type")
+							.style("font-size", "18px")
+							.attr("x", 20)
+							.attr("fill", "yellow")
+							.attr("font-family", "Lato Light")
+							.attr("class", "reminder")
+							.attr("y", 80);
+
+						// de-select radio buttons for access type
+						var radio2 = document.getElementsByName("access_type");
+						for(var i = 0; i < 3; i++)
+						{
+						    radio2[i].checked = false;
+						}
+						
+						// select access type
+						d3.selectAll("input[name='access_type']").on("change", function(){
+
+							// remove previous text
+							svg.selectAll(".access").remove();
+							svg.selectAll(".reminder").remove();
+							svg.selectAll(".hotspot_radii").remove();
+
+							let selected_access = this.value;
+
+							// access text
+							svg.append("text")
+								.text("Broadband Type: " + selected_access)
+								.style("font-size", "18px")
+								.attr("x", 20)
+								.attr("fill", "white")
+								.attr("font-family", "Lato Light")
+								.attr("class", "access")
+								.attr("y", 80);
+
+							//Define quantize scale to sort data values into buckets of color
+							//shades of yellow
+							let home_color = d3.scaleQuantize()
+								.range(["#FCF4A3","#FCE205","#FFC30B","#FDA50F","#C49102"]);
+
+							// shades of blue
+							let mobile_color = d3.scaleQuantize()
+								.range(["#ADD8E6","#00BBD1","#007DFF", "#1000FF", "#0200B9"]);
+
+							// shades of green
+							let pcc_color = d3.scaleQuantize()
+								.range(["#90EE90","#1FC600","#089000", "#0A5D00", "#063B00"]);
+
+							//Broadband access scale
+							//color 1
+							svg.append("rect")
+								.attr("x", 20)
+								.attr("y", 230)
+								.attr("height", 12)
+								.attr("width", 30)
+								.attr("fill", function(d){
+									if (selected_access == "Home")
+									{
+										return "#FCF4A3";
+									}
+
+									else if (selected_access == "Mobile")
+									{
+										return "#ADD8E6";
+									}
+
+									else if (selected_access == "Public Computers")
+									{
+										return "#90EE90";
+									}
+								})
+							
+							//color 2
+							svg.append("rect")
+								.attr("x", 50)
+								.attr("y", 230)
+								.attr("height", 12)
+								.attr("width", 30)
+								.attr("fill", function(d){
+									if (selected_access == "Home")
+									{
+										return "#FCE205";
+									}
+
+									else if (selected_access == "Mobile")
+									{
+										return "#00BBD1";
+									}
+
+									else if (selected_access == "Public Computers")
+									{
+										return "#1FC600";
+									}
+								})
+
+							//color 3
+							svg.append("rect")
+								.attr("x", 80)
+								.attr("y", 230)
+								.attr("height", 12)
+								.attr("width", 30)
+								.attr("fill", function(d){
+									if (selected_access == "Home")
+									{
+										return "#FFC30B";
+									}
+
+									else if (selected_access == "Mobile")
+									{
+										return "#007DFF";
+									}
+
+									else if (selected_access == "Public Computers")
+									{
+										return "#089000";
+									}
+								})
+							
+							//color 4
+							svg.append("rect")
+								.attr("x", 110)
+								.attr("y", 230)
+								.attr("height", 12)
+								.attr("width", 30)
+								.attr("fill", function(d){
+									if (selected_access == "Home")
+									{
+										return "#FDA50F";
+									}
+
+									else if (selected_access == "Mobile")
+									{
+										return "#1000FF";
+									}
+
+									else if (selected_access == "Public Computers")
+									{
+										return "#0A5D00";
+									}
+								})
+							
+							//color 5
+							svg.append("rect")
+								.attr("x", 140)
+								.attr("y", 230)
+								.attr("height", 12)
+								.attr("width", 30)
+								.attr("fill", function(d){
+									if (selected_access == "Home")
+									{
+										return "#C49102";
+									}
+
+									else if (selected_access == "Mobile")
+									{
+										return "#0200B9";
+									}
+
+									else if (selected_access == "Public Computers")
+									{
+										return "#063B00";
+									}
+								})
+							
+							// broadband access scale labels
+							svg.append("text")
+								.text("LOW")
+								.attr("font-family", "Lato")
+                            	.style("fill", "white")
+								.style("font-size", "12px")
+								.attr("x", 20)
+								.attr("y", 230);
+
+							svg.append("text")
+								.text("HIGH")
+								.attr("font-family", "Lato")
+                            	.style("fill", "white")
+								.style("font-size", "12px")
+								.attr("x", 140)
+								.attr("y", 230);
+
+							svg.append("text")
+								.text("ACCESS SCALE")
+								.attr("font-family", "Lato")
+                            	.style("fill", "white")
+								.style("font-size", "10px")
+								.attr("x", 60)
+								.attr("y", 252);
+
+							// input domains for color scales
+							home_color.domain([
+								d3.min(data, (d)=> { return d.home_broadband; }), 
+								d3.max(data, (d)=> { return d.home_broadband; })
+							]);
+
+							mobile_color.domain([
+								d3.min(data, (d)=> { return d.mobile_broadband; }), 
+								d3.max(data, (d)=> { return d.mobile_broadband; })
+							]);
+
+							pcc_color.domain([
+								d3.min(data, (d)=> { return d.pcc_count; }), 
+								d3.max(data, (d)=> { return d.pcc_count; })
+							]);
+							
+							// hotspots centroid scale
+							var min_hotspots = d3.min(data, (d)=> {return d.hotspots_count;});
+                    		var max_hotspots = d3.max(data, (d)=> {return d.hotspots_count;});
+
+							var radiusScale = d3.scaleLinear()
+								.range([1, 20])
+								.domain([min_hotspots, max_hotspots])
+							
+							// Choropleth map for selected borough
+
+							// SVG for filtered borough
+							let svg2 = svg.append("svg")
+								.style("stroke", "black")
+								.style("stroke-width", "1px")
+								.attr("width", 600)
+								.attr("heigh", 600);
+
+							// filtered json array for selected borough
+							var filtered = [];
+
+							for (let j = 0; j < json.features.length; j++) {
+								let jsonBorough = json.features[j].properties.borough;
+								// only get json objects for selected borough
+								if (jsonBorough == selected_borough) {
+									filtered.push(json.features[j])
+								}
+							}
+							
+							//Merge the csv data and GeoJSON
+							//Loop through once for each csv data value
+							for (let i = 1; i < data.length; i++) {
+								let dataZipCode = data[i].zip_code;				
+								let dataHomeValue = data[i].home_broadband;	
+								let dataMobileValue = data[i].mobile_broadband;	
+								let dataPCCValue = data[i].pcc_count;
+								
+								//Find the corresponding zip code inside the GeoJSON
+								for (let j = 0; j < json.features.length; j++) {
+								
+									let jsonZipCode = json.features[j].properties.postalCode;
+
+									if (dataZipCode == jsonZipCode) {
+										json.features[j].properties.hotspots_count = data[i].hotspots_count;
+
+										//Copy the appropriate data value into the JSON
+										if (selected_access == "Home")
+										{
+											json.features[j].properties.value = dataHomeValue;
+										}
+
+										else if (selected_access == "Mobile")
+										{
+											json.features[j].properties.value = dataMobileValue;
+										}
+
+										else if (selected_access == "Public Computers")
+										{
+											json.features[j].properties.value = dataPCCValue;
+										}
+										
+										//Stop looking through the JSON
+										break;
+									}
+								}		
+							}
+
+							//Define path generators per borough (changes in scale and translate coords)
+                            queens_projection = d3.geoAlbers()
+								.center([0, 40])
+								.rotate([74,0])
+								.translate([150, 1340])
+								.scale(90000)
+
+							let queens_path = d3.geoPath()
+								.projection(queens_projection);
+
+							let brooklyn_projection = d3.geoAlbers()
+								.center([0, 40])
+								.rotate([74,0])
+								.translate([300, 1600])
+								.scale(120000)
+
+							let brooklyn_path = d3.geoPath()
+								.projection(brooklyn_projection);
+
+							let bronx_projection = d3.geoAlbers()
+								.center([0, 40])
+								.rotate([74,0])
+								.translate([200, 2300])
+								.scale(140000)
+
+							let bronx_path = d3.geoPath()
+								.projection(bronx_projection);
+
+							let manhattan_projection = d3.geoAlbers()
+								.center([0, 40])
+								.rotate([74,0])
+								.translate([300, 1900])
+								.scale(120000)
+
+							let manhattan_path = d3.geoPath()
+								.projection(manhattan_projection);
+
+							let staten_island_projection = d3.geoAlbers()
+								.center([0, 40])
+								.rotate([74,0])
+								.translate([670, 1500])
+								.scale(130000)
+
+							let staten_path = d3.geoPath()
+								.projection(staten_island_projection);
+							
+							// function to generate hotspot centroids
+							let borough_hotspot_markers = function(projection)
+							{
+								svg2.append("circle")
+									.attr("cx", 30)
+									.attr("cy", 110)
+									.attr("r", 7)
+									.style("fill", "yellow")
+									.style("stroke", "gray")
+									.attr("class", "hotspot_radii")
+									.style("stroke-width", 0.25)
+									.style("opacity", 10);
+
+								svg2.append("text")
+									.attr("x", 45)
+									.attr("y", 115)
+									.style("fill", "ivory")
+									.style("font-family", "Lato Light")
+									.attr("class", "hotspot_radii")
+									.style("letter-spacing", "0.8px")
+									.style("stroke-width", 0.00001)
+									.text("Hotspot Count");
+
+								svg2.selectAll("circle1")
+									.data(filtered)
+									.enter()
+									.append("circle")
+									.attr("cx", (d)=> {
+										return projection([d.properties.longitude, d.properties.latitude])[0];
+									})
+									.attr("cy", (d)=> {
+										return projection([d.properties.longitude, d.properties.latitude])[1];
+									})
+									.attr("r", (d)=> {
+										return radiusScale(d.properties.hotspots_count);
+									})
+									.style("fill", "yellow")
+									.style("stroke", "gray")
+									.style("stroke-width", 0.50)
+									.style("opacity", 0.1)
+									.attr("class", "hotspot_radii")
+									// hover values
+									.on("mouseout", function(event, d){
+										d3.select("#hotspot").attr("opacity", 0);
+									})
+									.on("mouseover", function(event, d){
+
+										d3.select("#hotspot").remove();
+										
+										svg.append("text")
+											.attr("x", 80)
+											.attr("y", 150)
+											.style("text-anchor", "middle")
+											.style("fill", "yellow")
+											.style("letter-spacing", "0.8px")
+											.style("font-family", "Lato")
+											.style("font-size", "20px")
+											.text(function() {
+												if (d.properties.hotspots_count == 1)
+												{
+													return (d.properties.hotspots_count + " Hotspot");
+												}
+												else
+												{
+													return (d.properties.hotspots_count + " Hotspots");
+												}
+
+											})
+											.attr("id", "hotspot");
+									});
+								}
+
+							// function to encode each zip code with color
+							// add hotspot markers
+							// hover values for zip code and broadband rate
+							let borough_broadband = function(path, projection){
+								svg2.selectAll("path.a")
+									.data(filtered)
+									.enter()
+									.append("path")
+									.attr("d", path)
+									.style("fill", (d)=> {
+										//Get data value
+										let value = d.properties.value;
+
+										if (selected_access == "Home")
+										{
+											return home_color(value);
+										}
+
+										else if (selected_access == "Mobile")
+										{
+											return mobile_color(value);
+										}
+
+										else if (selected_access == "Public Computers")
+										{
+											borough_hotspot_markers(projection);
+											return pcc_color(value);
+										}
+									})
+									.attr("class", "a")
+									// hover values
+									.on("mouseout", function(event, d){
+										d3.select("#zipcode").attr("opacity", 0);
+										d3.select("#value").attr("opacity", 0);
+									})
+									.on("mouseover", function(event, d){
+
+										d3.select("#zipcode").remove();
+										d3.select("#value").remove();
+										
+										svg.append("text")
+											.attr("x", 85)
+											.attr("y", 150)
+											.style("text-anchor", "middle")
+											.style("fill", "white")
+											.attr("font-family", "Lato")
+											.style("font-size", "14px")
+											.text("Zip Code: " + d.properties.postalCode)
+											.attr("id", "zipcode");
+
+										if (selected_access == "Public Computers")
+										{
+											svg.append("text")
+											.attr("x", 85)
+											.attr("y", 180)
+											.style("text-anchor", "middle")
+											.style("fill", "white")
+											.attr("font-family", "Lato")
+											.style("font-size", "14px")
+											.text(function(){
+												if (d.properties.value != null) {
+													console.log(d.properties.value)
+													if (d.properties.value == 1)
+													{
+														return (d.properties.value + " Computer");
+													}
+													else
+													{
+														return (d.properties.value + " Computers");
+													}
+												}
+											})
+											.attr("id", "value");
+										}
+										else {
+											svg.append("text")
+											.attr("x", 85)
+											.attr("y", 180)
+											.style("text-anchor", "middle")
+											.style("fill", "white")
+											.attr("font-family", "Lato")
+											.style("font-size", "14px")
+											.text(function(){
+												if (!isNaN(d.properties.value)) {
+													return ("Broadband Rate: " + Math.round(d.properties.value * 100) + "%")
+												}
+											})
+											.attr("id", "value");
+										}
+									});
+							}
+
+							// Bind data and create one path per GeoJSON feature
+							// Different paths per borough, use filtered json array for data
+							if (selected_borough == "Queens")
+							{
+								borough_broadband(queens_path, queens_projection);
+							}
+
+							else if (selected_borough == "Brooklyn")
+							{
+								borough_broadband(brooklyn_path, brooklyn_projection);
+							}
+
+							else if (selected_borough == "Bronx")
+							{
+								borough_broadband(bronx_path, bronx_projection);
+							}
+
+							else if (selected_borough == "Manhattan")
+							{
+								borough_broadband(manhattan_path, manhattan_projection);
+							}
+
+							else if (selected_borough == "Staten Island")
+							{
+								borough_broadband(staten_path, staten_island_projection);
+							}
+							
+							// Choropleth map for all boroughs
+
+							//Merge the csv data and GeoJSON
+							//Loop through once for each csv data value
+							for (let i = 1; i < data.length; i++) {
+								let dataZipCode = data[i].zip_code;				
+								let dataHomeValue = data[i].home_broadband;	
+								let dataMobileValue = data[i].mobile_broadband;
+								let dataPCCValue = data[i].pcc_count;
+								
+								//Find the corresponding zip code inside the GeoJSON
+								for (let j = 0; j < json.features.length; j++) {
+								
+									let jsonZipCode = json.features[j].properties.postalCode;
+						
+									if (dataZipCode == jsonZipCode) {
+
+										//Copy the appropriate data value into the JSON
+										if (selected_access == "Home")
+										{
+											json.features[j].properties.value = dataHomeValue;
+										}
+
+										else if (selected_access == "Mobile")
+										{
+											json.features[j].properties.value = dataMobileValue;
+										}
+
+										else if (selected_access == "Public Computers")
+										{
+											json.features[j].properties.value = dataPCCValue;
+										}
+										
+										//Stop looking through the JSON
+										break;
+									}
+								}		
+							}
+
+							// SVG for minimized city overview
+							let svg3 = svg.append("svg")
+								.attr("stroke", "gray")
+								.attr("stroke-width", "0.5px")
+								.attr("width", 250)
+								.attr("heigh", 250);
+
+							// Define map projection
+							let projection = d3.geoAlbers()
+								.center([0, 40])
+								.rotate([74,0])
+								.translate([100, 660])
+								.scale(25000);
+
+							// Define path generator for all boroughs
+							let path = d3.geoPath()
+								.projection(projection);
+
+							// Bind data and create one path per GeoJSON feature
+							svg3.selectAll("path")
+							.data(json.features)
+							.enter()
+							.append("path")
+							.attr("d", path)
+							.style("fill", (d)=> {
+									//Get data value
+									let value = d.properties.value;
+
+									if (selected_access == "Home")
+										{
+											return home_color(value);
+										}
+
+									else if (selected_access == "Mobile")
+									{
+										return mobile_color(value);
+									}
+
+									else if (selected_access == "Public Computers")
+									{
+										return pcc_color(value);
+									}
+								})
+
+							svg3.append('rect')
+								.attr('x', 10)
+								.attr('y', 210)
+								.attr('width', 200)
+								.attr('height', 240)
+								.attr("fill", "none")
+								.attr("stroke", "white")
+								.attr("stroke-width", "1px");
+						})
+					});
+				});
+			});
+		</script>
+	</body>
+</html>
